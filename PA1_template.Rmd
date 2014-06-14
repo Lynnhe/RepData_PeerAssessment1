@@ -1,20 +1,50 @@
 # Reproducible Research: Peer Assessment 1
 
 
-## Loading and preprocessing the data
-
-
+## Loading and preprocessing the activity
+```{r}
+library(plyr)
+library(data.table)
+activity <- fread("./activity.csv")
+summary(activity)
+activity.steps <- ddply(activity,.(date),summarize,totalSteps=sum(steps,na.rm=TRUE))    
+hist(activity.steps$totalSteps)
+```
 
 ## What is mean total number of steps taken per day?
-
-
+```{r}
+mean(activity.steps$totalSteps,na.rm=TRUE)
+median(activity.steps$totalSteps,na.rm=TRUE)
+```
 
 ## What is the average daily activity pattern?
-
-
-
+```{r}
+activity.aveStepsIn5Mins <- ddply(activity,.(interval),summarize,aveSteps=mean(steps,na.rm=TRUE))
+ts.plot(activity.aveStepsIn5Mins$aveSteps,gpars=list(xlab="intervals",ylab="average steps"))
+ts.plot(activity.aveStepsIn5Mins$aveSteps,gpars=list(xlab="intervals",ylab="average steps"))
+activity.aveStepsIn5Mins[max(activity.aveStepsIn5Mins$aveSteps),]
+```
 ## Imputing missing values
+```{r}
+sum(is.na(activity$step))
+activity2 <- copy(activity)
+activity2$temp <- ifelse(is.na(activity2$steps),0,activity2$steps)
+activity2[,newSteps:=mean(temp),by=date]
+activity.steps2 <- ddply(activity2,.(date),summarize,totalSteps=sum(newSteps,na.rm=TRUE))    
+hist(activity.steps2$totalSteps)
+mean(activity.steps2$totalSteps,na.rm=TRUE)
+median(activity.steps2$totalSteps,na.rm=TRUE)
+```
 
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+Sys.setlocale("LC_TIME", "C")
+activity2$date <- as.Date(activity2$date)
+activity2[,weekday:=weekdays(date)]
+activity2[,day:=ifelse(weekday %in% c("Saturday","Sunday"),"weekend","weekday")]
+activity2.aveStepsIn5Mins <- ddply(activity2,.(interval,day),summarize,aveSteps=mean(steps,na.rm=TRUE))
+library(lattice)
+activity2.aveStepsIn5Mins <- transform(activity2.aveStepsIn5Mins,day=factor(day))
+xyplot(aveSteps~interval|day,data=activity2.aveStepsIn5Mins,layout=c(1,2),type="l")
